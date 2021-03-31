@@ -1,8 +1,22 @@
 bookdown::gitbook:
+  split_by: chapter
+  image:
   css: style.css
   config:
+    toolbar:
+      position: static
     toc:
       before: |
-        <li><a href="./">SHORT TITLE HERE</a></li>
+        <li></li>
       after: |
-        <li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+        <li><a href="https://github.com/agmacpha/gwaii-haanas" target="blank">
+        Published with bookdown</a></li>
+    edit: https://github.com/agmacpha/gwaii-haanas/edit/master/%s
+    view: https://github.com/agmacpha/gwaii-haanas/blob/master/%s
+    sharing:
+      facebook: yes
+      twitter: yes
+      github: yes
+      linkedin: yes
+bookdown::pdf_book:
+  keep_tex: yes

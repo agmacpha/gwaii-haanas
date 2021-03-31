@@ -1,0 +1,6 @@
+For EI measure deployments, there are four recording periods/files for each day in 2017:
+1) one 3-hr block at night, starting half an hour after sunset (POST SUNSET), 
+2) one 3-hr block at night, ending half an hour before sunrise (PRE SUNRISE) [both of these target saw-whet owls];
+3) one 30-min recording beginning 10 min before sunrise (SUNRISE) [targeting goshawk, grouse and songbird],
+4) one 30-min recording beginning one hour after sunrise (POST SUNRISE), targeting grouse. 
+

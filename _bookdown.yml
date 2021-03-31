@@ -1,8 +1,12 @@
-book_filename: "bookdownproj"
+book_filename: "Developing the ARU monitoring measures for Gwaii Haanas"
+repo: https://github.com/agmacpha/gwaii-haanas
 output_dir: docs
-delete_merged_file: true
-edit: https://github.com/YOUR GITHUB USERNAME/YOUR REPO NAME/edit/master/%s
-view: https://github.com/YOUR GITHUB USERNAME/YOUR REPO NAME/blob/master/%s
 language:
+  label:
+    fig: "Figure "
+    tab: "Table "
   ui:
+    edit: Edit
     chapter_name: "Chapter "
+    appendix_name: "Appendix "
+delete_merged_file: true

@@ -1,0 +1,325 @@
+# Songbird community
+
+```{r eval=T, warning=F, error=F, message=F, include=T}
+
+library(tidyverse)
+library(sf)
+library(tidyverse)
+library(broom.mixed)
+library(vegan)
+library(lme4)
+library(MuMIn)
+library(multcomp)
+library(MASS)
+library(fitdistrplus)
+library(bcmaps)
+library(bcmapsdata)
+library(vegan)
+library(plotly)
+
+ghnp <- read_csv("/users/alexandremacphail/GH/GH/allghnp.csv")
+
+ghnp <- ghnp %>%
+  mutate(passerine = case_when(
+    species_order == "PASSERIFORMES" ~ "Yes",
+    TRUE ~ "No"
+  ))
+
+#This is a list of codes used in WildTrax to tag abiotic events like weather, traffic, industrial noise or background noise
+abiotic_codes<-c('LIBA','MOBA','HEBA','LITR','MOTR','HETR','LINO','MONO','HENO','LIRA','MORA','HERA','LIWI','MOWI','HEWI','LIAI','MOAI','HEAI','LITN','MOTN','HETN','LIDT','MODT','HEDT','LITF','MOTF','HETF')
+
+#This is the current list of mammals in the acoustic species table in WildTrax
+mammals<-c('AMPK','SHEP','RESQ','BEAV','COYT','FISH','GROU','HARE','LECH','MULE','MUSK','OTTE','PORC','REFX','SKNK','WOLF','WTDE','BADG','HOAR','MART','MOOS','CARI','CATT','COWW','DASH','ELKK','GOAT','GRBE','PIGG','RMBH','MOGO','COPI','FRBA','KEMY','LBBA','LEBA','LLBA','PABA','SHBA','SPOB','WSFB','YUMY','CAMY','ESFB','TCBA','WRBA','ERBA','ABBE','BBBA','NLEM','DOGG','TBEB','AGSQ','HOMA','SIVO','EGSQ','WGSQ','MGSQ','ASSS','CHIK','HORS')
+amphs<-c('WETO','CATO','GPTO','CSFR','BCFR','WOFR','PLSP','NLFR')
+
+#List of species on Haida Gwaii 
+hgspp <- read_csv("/users/alexandremacphail/GH/GH/hgspp/avibasehg2.csv") %>% as_tibble()
+# Yes means confirmed breeder, migrant or resident
+# Rare / Accidental
+# Yes_d was changed from Rare / Accdidental -> Yes for TOWA, CHSP, WETA
+# Rare / Accidental_m is for NOFU
+# COSEWIC and BC Provincial statuses are included
+
+
+
+```
+
+## Methods
+
+Each ARU location was included as a random effect to account for non-independence of the sampling units within and between years. Species richness was used to measure changes in number of species per sampling location per year. I measured the number of distinct species observed over all visits at each location using generalized linear models (GLMs) with Gaussian distribution. Akaikike's Information Criterion (AIC) was used to select the best model (rank_year + HABITAT + (1 | location_name). I also fit the model to ensure overdispersion of parameters was not violated. A generalized linear hypothesis test (GLHT) using a Tukey single-step multiple comparison procedure and statistical test to find differences in the mean species richness per year. 
+
+```{r, include = T, eval = T, warning = F, error = F, message = F}
+
+
+ghnp_l <- ghnp %>%
+  dplyr::select(location_name, location_latitude, location_longitude) %>%
+  distinct() %>%
+  filter(!is.na(location_latitude))
+
+ecoreg <- ecoregions()
+ecoprov <- ecoprovinces()
+ecosec <- ecosections()
+
+h0 <- transform_bc_albers(st_as_sf(ghnp_l, coords=c("location_longitude","location_latitude"), crs=4326))
+# h0 <- h0 %>%
+#   mutate(lead = geometry[row_number() + 1],
+#          dist = st_distance(geometry, lead, by_element = T),) %>%
+#   dplyr::select(-lead)
+h <- st_buffer(h0,150)
+
+ghpc <- transform_bc_albers(st_read("/users/alexandremacphail/GH/GH/gis/GHPlantCommunities_Golumbia01.shp", quiet = TRUE) %>% st_transform(crs=4326) %>% st_make_valid()) %>% na.omit()
+
+
+
+
+# Clean up data from import
+g2a <- ghnp %>%
+  dplyr::select(project_full_nm, species_code, species_english_name, passerine, individual, location_name, location_latitude, location_longitude, recording_date, abundance_type, confidence_type, method_type, user_name) %>%
+  distinct() %>%
+  filter(!species_code %in% abiotic_codes,
+         !species_code %in% mammals,
+         !species_code %in% amphs,
+         !grepl('UN^',species_code)) %>%
+  mutate(year = lubridate::year(recording_date),
+         hour = lubridate::hour(recording_date),
+         julian = lubridate::yday(recording_date)) %>%
+  dplyr::select(location_name, year, recording_date, julian, hour, species_code, species_english_name, passerine, individual, abundance_type)
+
+#Merge species table
+g3a <- g2a %>%
+  dplyr::left_join(dplyr::select(hgspp, species_english_name, on_haida_gwaii), by = c("species_english_name" = "species_english_name")) %>%
+  filter(passerine == "Yes")
+
+write.csv(g3a, "/users/alexandremacphail/desktop/ghspp.csv")
+
+#Intersect the buffered locations with the plant communities layer to get habitat type
+ints <- st_intersection(ghpc, h) %>%
+  mutate(intersect_area = st_area(.)) %>%
+  dplyr::select(HABITAT, location_name, intersect_area) %>%
+  st_drop_geometry() %>%
+  as_tibble() %>%
+  mutate(ia = as.integer(intersect_area),
+         prop = round((ia / 70685.83),5)) %>%
+  inner_join(., g3a, by = c("location_name" = "location_name")) %>%
+  dplyr::select(location_name, year, recording_date, HABITAT, prop, species_code, individual, abundance_type, julian, hour) %>%
+  mutate(individual = case_when(
+             abundance_type == "TMTC" ~ 4, #Conditional based on spp richness?
+             abundance_type == "CI 1" ~ 1,
+             abundance_type == "CI 2" ~ 5,
+             abundance_type == "CI 3" ~ 20,
+             TRUE ~ as.numeric(individual))) %>%
+  dplyr::select(location_name, year, recording_date, HABITAT, prop, julian, hour, species_code, individual) %>%
+  distinct() %>% 
+  group_by(location_name, year) %>%
+  mutate(alpha_loc = n_distinct(species_code)) %>%
+  ungroup()
+
+boxplot(alpha_loc ~ HABITAT, ints)
+
+# # GLMs for alpha diversity over years
+# ints$rank_year <- factor(ints$year) #create a factor for year
+# ml0 <- glm(alpha_loc ~ 1, data = ints, family = gaussian)
+# ml1 <- glm(alpha_loc ~ rank_year, data = ints, family = gaussian)
+# ml2 <- lmer(alpha_loc ~ rank_year + (1|location_name), data = ints) #why doesn't this work? it is because location_name is random effect?
+# ml3 <- lmer(alpha_loc ~ rank_year + HABITAT + (1|location_name), data = ints)
+# model.sel(ml0, ml1, ml2, ml3)
+#ml2 wins for alpha location richness
+
+# #Test for overdispersion
+# overdisp_fun <- function(model) {
+#     rdf <- df.residual(model)
+#     rp <- residuals(model,type="pearson")
+#     Pearson.chisq <- sum(rp^2)
+#     prat <- Pearson.chisq/rdf
+#     pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+#     c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+# }
+# 
+# overdisp_fun(ml2)
+# #Yikes extremely overdispersed
+# 
+# #Fit the overdispersion to the model
+# tidy_quasi <- function(model, phi=overdisp_fun(model)["ratio"],
+#                        conf.level=0.95) {
+#     tt <- (tidy(model, effects="fixed")
+#         %>% mutate(std.error=std.error*sqrt(phi),
+#                    statistic=estimate/std.error,
+#                    p.value=2*pnorm(abs(statistic), lower.tail=FALSE))
+#     )
+#     return(tt)
+# }
+# tq2 <- tidy_quasi(ml2)
+# 
+# #Print the results
+# tq2
+# 
+# 
+# #Run general linear hypothesis testing on the models
+# lmod2 <- glht(ml2, linfct=mcp(rank_year="Tukey"))
+# out2 <- summary(lmod2, test = adjusted("none"))
+# out2
+
+
+#Plot the raw data results
+r <- ints %>%
+  dplyr::select(location_name, year, HABITAT, alpha_loc) %>%
+  distinct()
+
+#Alpha richness each visits
+ggplot(r, aes(x=year, y=alpha_loc, colour=HABITAT)) + geom_boxplot(aes(group=year)) + geom_jitter(alpha = 0.2) + theme_bw() + scale_colour_viridis_d() + theme(legend.position = "none")
+
+#Alpha richness each location
+ggplot(r, aes(x=year, y=alpha_loc, fill=HABITAT)) + geom_boxplot(aes(group=year)) + geom_jitter(alpha = 0.2) + theme_bw() + facet_wrap(~HABITAT) + scale_colour_viridis_d() + theme(legend.position = "none")
+
+ggplotly(ggplot(subset(ints, species_code %in% c("TOWA","PAWA","PSFL","HETH","SWTH","YRWA","SOGR","WIWA")), aes(x=julian, fill=species_code)) + geom_density(alpha = 0.5) + facet_wrap(~year))
+
+
+# #Quick test with distance to ocean
+# itest <- ints
+# i2 <- itest %>%
+#   mutate(rank_year = factor(year),
+#          dist = as.numeric(dist),
+#          near_far = case_when(
+#            dist < 200 ~ "Near",
+#            TRUE ~ "Far"
+#          )) %>%
+#   filter(grepl("Hemlock Cedar",HABITAT)) %>%
+#   dplyr::select(location_name, year, HABITAT, species_code, alpha_loc, dist, rank_year, near_far) %>%
+#   group_by(near_far) %>%
+#   summarise(mean = mean(alpha_loc),
+#             sd = sd(alpha_loc),
+#             se = sd / sqrt(n()),
+#             ul = mean + se,
+#             ll = mean - se)
+# 
+# ggplot(i2, aes(x = near_far, y=mean))+
+#   geom_line()+
+#   geom_point()  +
+#   geom_errorbar(aes(ymax=ul, ymin=ll), width=0.25) + 
+#   xlab('points') 
+# 
+# fit_ln <- fitdist(i2$ocean_eff,"lnorm")
+# fit_g <- fitdist(i2$ocean_eff,"gamma")
+# fit_w <- fitdist(i2$ocean_eff,"weibull")
+# 
+# par(mfrow=c(2,2))
+# plot.legend <- c("Weibull", "lognormal", "gamma")
+# denscomp(list(fit_w, fit_g, fit_ln), legendtext = plot.legend)
+# cdfcomp (list(fit_w, fit_g, fit_ln), legendtext = plot.legend)
+# qqcomp  (list(fit_w, fit_g, fit_ln), legendtext = plot.legend)
+# ppcomp  (list(fit_w, fit_g, fit_ln), legendtext = plot.legend)
+# 
+# an <- aov(ocean_eff ~ near_far, data = i2)
+# plot(an)
+
+```
+
+
+### Community structure
+
+Changes to community composition were tested using a partial canonical correspondence analysis (pCCA; R package “vegan”, [61]). A pCCA determines the amount of variation in species abundance data that is explained by environmental variables [61] and distributes stations in the most parsimonious multivariate space to visually depict similarities and shifts in community composition. 
+
+A permutation test with 999 permutations was used to determine the significance of the variation explained by the habitat type controlling for conditional variables (location and species richness). To partition the amount of variation that was explained by burn severity alone, vegetation type alone, and their interaction, we also built models with: (1) severity as the main effect and vegetation type as an additional conditional variable and (2) vegetation type as the main effect with burn severity as an additional conditional variable (as per [62]). β-diversity was measured using a test for homogeneity of multivariate dispersion, or the amount of variability in species composition among treatment types, using a permutation test [61] in the R package “vegan”. Although conditional variables could not be included, dispersion provides information about differences in β-diversity among treatment types that the other methods could not calculate. Bray–Curtis dissimilarity was used for all community composition analyses because it is suitable for analyzing count data with a high number of zeros [63]. Results from the pCCA were presented as an ordination with 67% confidence ellipses to show where the majority of the stations of each treatment type were located in two-dimensional space.
+
+
+```{r, include = T, eval = T}
+
+#Setup the community matrix with the variables of interest
+i2 <- ints %>%
+    dplyr::select(location_name, HABITAT, prop, species_code, individual, recording_date) %>%
+    distinct() %>%
+    mutate(year = lubridate::year(recording_date)) %>%
+    group_by(location_name, year, HABITAT, prop, species_code) %>%
+    mutate(individual = max(individual)) %>%
+    ungroup() %>%
+    group_by(location_name, year) %>%
+    mutate(alpha_loc = n_distinct(species_code)) %>%
+    ungroup() %>%
+    distinct() %>%
+    pivot_wider(names_from = species_code, values_from = individual, values_fill = 0) %>%
+    as_tibble() %>%
+    mutate_if(is.integer, as.numeric)
+multi_type <- i2 %>%
+    dplyr::select(location_name, HABITAT, prop, recording_date, alpha_loc, year) %>%
+    distinct()
+
+write.csv(i2,"/users/alexandremacphail/desktop/ghwide.csv")
+write.csv(multi_type,"/users/alexandremacphail/desktop/ghwideplus.csv")
+
+#Let's do a quick species accumulation curve
+plot(vegan::specaccum(i2[,-c(1:6)], method="random"))
+
+#Run the ordination
+t3 <- vegan::rda(i2[, -c(1:6)] ~ HABITAT, data = multi_type)
+#The stepwise model
+vegan::ordistep(t3)
+#Set things up for graphics
+t3scores <- scores(t3, display = "sites") %>%
+  as.data.frame() %>%
+  rownames_to_column("site") %>%
+  bind_cols(., multi_type)
+t3vect <- scores(t3, display = "species") %>%
+  as.data.frame()
+plot_RDA <- ggplot(data = t3scores, aes(x = RDA1, y = RDA2)) +
+  geom_point(data = t3scores,
+             aes(x = RDA1, y = RDA2, colour = HABITAT),
+             alpha = 0.6) +
+  stat_ellipse(
+    data = t3scores,
+    aes(colour = HABITAT),
+    linetype = 4,
+    type = 'norm',
+    level = 0.67
+  ) +
+  scale_colour_viridis_d(guide = guide_legend()) +
+  geom_vline(xintercept = c(0),
+             color = "#A19E99",
+             linetype = 2) +
+  geom_hline(yintercept = c(0),
+             color = "#A19E99",
+             linetype = 2) +
+  geom_segment(
+    data = t3vect,
+    aes(
+      x = 0,
+      y = 0,
+      xend = RDA1,
+      yend = RDA2
+    ),
+    arrow = arrow(length = unit(0.2, "cm")),
+    alpha = 0.2
+  ) +
+  geom_text(data = t3vect, aes(
+    x = RDA1,
+    y = RDA2,
+    label = rownames(t3vect),
+    alpha = 0.2
+  )) +
+  theme_bw() +
+  labs(x = paste0("CA1 ", round(t3$CA$eig[[1]], 2), '%'),
+       y = paste0("CA2 ", round(t3$CA$eig[[2]], 2), '%')) +
+  ggtitle("Haida Gwaii species communities")
+#Plot the RDA
+ggplotly(plot_RDA)
+
+```
+
+# Results
+
+## Community stability
+
+Here we will report on the community stability based on the final results. 
+
+## Monitoring program
+
+Here we will make recommendations on employing a robust, long-term monitoring program to assess forest health and songbirds.
+
+- Sample size
+- Time frame
+- Frequency
+- Report metric
+  - Abundance
+  - Richness
+  - ##Occupancy##
+  
+

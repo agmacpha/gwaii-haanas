@@ -1,0 +1,50 @@
+# Habitat use
+
+## Assessing habitat use and population status of Northern Goshawk and Northern Saw-whet on Haida Gwaii
+
+We performed community transcription at the location on Graham Island. 
+
+```{r, warning = F, message = F, error = F, eval = T, include = T}
+
+library(tidyverse)
+
+nswo_data <- read_csv("NSWO-GHNPR.csv")
+
+n2 <- nswo_data %>%
+  mutate(fp = str_remove(file_path,"\\_d"),
+         year = lubridate::year(recording_date_time),
+         hour = lubridate::hour(recording_date_time))
+
+ggplot(n2, aes(x=location, y=recording_date_time)) + geom_point() + coord_flip()
+
+ggplot(n2, aes(x=recording_date_time, y=hour, color=location)) + geom_point() + geom_jitter() + coord_flip()
+  
+n3 <- n2 %>%
+  group_by(location, julian, hour) %>%
+  add_tally(name = "group") %>%
+  ungroup() %>%
+  group_by(location, group) %>%
+  slice_sample(n = 24, weight_by = group, replace = F)
+
+ggplot(n3, aes(x=location, y=recording_date_time)) + geom_point() + coord_flip()
+
+ggplot(n3, aes(x=recording_date_time, y=hour, color=location)) + geom_point() + geom_jitter() + coord_flip()
+
+n4 <- n2 %>%
+  filter(julian %in% c(60:220),
+         hour %in% c(3:10,19:22)) %>%
+  group_by(location, time_index) %>%
+  slice_sample(n = 8, replace = F)
+
+ggplot(n4, aes(x=location, y=recording_date_time)) + geom_point() + coord_flip()
+
+ggplot(n4, aes(x=recording_date_time, y=hour, color=location)) + geom_point() + coord_flip()
+
+nswo_tasks <- bind_rows(n3, n4) %>%
+  mutate(script = paste0("sudo ln -s ",file_path," /media/BUdata01/wildtrax_loads/nswo_ghnpr/",file_name,".",file_type))
+
+write.csv(nswo_tasks$script, "nswo.txt", row.names=F, quote = F)
+  
+sum(nswo_data$length_seconds)/3600
+  
+```

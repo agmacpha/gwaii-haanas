@@ -1,0 +1,12 @@
+name: haida-gwaii-species
+title: haida-gwaii-species
+username:
+account: agmacpha
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3881349
+bundleId: 4408947
+url: https://agmacpha.shinyapps.io/haida-gwaii-species/
+when: 1617047483.4708
+asMultiple: FALSE
+asStatic: FALSE

@@ -1,0 +1,14 @@
+# Conclusions
+
+## Recommendations
+
+### Equipment servicing
+
+- Equipment servicing is important to extend the life of the environmental sensor being used. Specifically, with ARUs, the calibration of microphones is important. Here are some recommendations:
+  - Turgeon et al. 2017
+  - Bioacoustic Unit Deployment Protocols
+    - Provide recommendations for coastal forest
+
+- Try monitoring NOFU on north point breeding potential
+- Hide tide low tide effects
+- LDFCs for abiotics

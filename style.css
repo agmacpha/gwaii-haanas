@@ -1,9 +1,11 @@
-p.caption {
-  color: #777;
-  margin-top: 10px;
+.caption { /* this is for figure captions */
+  font-style: italic;
+  color: grey;
+  margin-top: 4px;
+  font-size: 0.9em;
 }
 p code {
-  white-space: inherit;
+  white-space: pre-wrap ;
 }
 pre {
   word-break: normal;
@@ -11,4 +13,53 @@ pre {
 }
 pre code {
   white-space: inherit;
+}
+.flushright {
+  text-align: right;
+}
+blockquote > p:last-child {
+  text-align: right;
+}
+blockquote > p:first-child {
+  text-align: inherit;
+}
+.header-section-number {
+  padding-right: .4em;
+  font-weight: 600;
+}
+.level1 .header-section-number {
+  display: inline-block;
+  border-bottom: 3px solid;
+}
+.level1 h1 {
+  border-bottom: 2px solid;
+}
+  h1, h2, h3, h4, h5, h6 {
+  font-weight: normal;
+}
+h1.title {
+  font-weight: 900;
+}
+.book .book-body .page-wrapper .page-inner .normal strong {
+  font-weight: 600;
+}
+span.header-section-number::after {
+    content: ".";
+}
+.button-icons {  /* this is for embedded pictures of WildTrax buttons into tet */
+  width: auto;
+  height: 2em;
+}
+.jargon {
+  font-weight: bold;
+  font-style: italic;
+  color: #33638D;
+}
+.species {
+  font-weight: bold;
+  color: #55C667 ;
+}
+.gh {
+  font-weight: bold;
+  color: #481567 ;
 }

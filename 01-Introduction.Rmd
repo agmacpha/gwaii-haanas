@@ -1,3 +1,6 @@
+---
+output: pdf_document
+---
 # Introduction
 
 ## Overview of study area
@@ -36,7 +39,7 @@ library(vegan)
 library(plotly)
 library(tidyverse)
 
-ghnp <- read_csv("/users/alexandremacphail/GH/GH/allghnp.csv")
+ghnp <- read_csv("/users/alexandremacphail/gwaii-haanas/allghnp.csv")
 
 ghnp_l <- ghnp %>%
   dplyr::select(location_name, location_latitude, location_longitude) %>%
@@ -54,21 +57,28 @@ h0 <- h0 %>%
   dplyr::select(-lead)
 h <- st_buffer(h0,150)
 
-ghpc <- transform_bc_albers(st_read("/users/alexandremacphail/GH/GH/gis/GHPlantCommunities_Golumbia01.shp", quiet = TRUE) %>% st_transform(crs=4326) %>% st_make_valid()) %>% na.omit()
+ghpc <- transform_bc_albers(st_read("/users/alexandremacphail/gwaii-haanas/gis/GHPlantCommunities_Golumbia01.shp", quiet = TRUE) %>% st_transform(crs=4326) %>% st_make_valid()) %>% na.omit()
 
 # ocean <- st_combine(st_crop(transform_bc_albers(st_read("/users/alexandremacphail/GH/GH/gis/lhy_000h16a_e.shp", quiet=TRUE) %>% st_transform(crs=4326) %>% st_make_valid()), xmin = 529366.8, ymin = 781438.2, xmax = 748180.7, ymax = 1059955))
 
-ggplotly(ggplot() +
-  geom_sf(data = subset(ecosec, ECOSECTION_NAME %in% c("Skidegate Plateau","Hecate Strait","Queen Charlotte Lowland","Queen Charlotte Ranges")), aes(colour = ECOSECTION_NAME, fill=NA)) +
-  geom_sf(data = ghpc, colour = "#A19E99", size = 0.2, aes(fill = HABITAT), alpha = 0.5) +
-  geom_sf(data = h, colour = "red", fill=NA) +
-  coord_sf(crs = 3005, xlim= c(522000,670000), ylim = c(775000,1057000), expand = F) +
-  scale_fill_viridis_d(guide = guide_legend()) +
-  scale_colour_viridis_d(guide = guide_legend()) + 
-  ggtitle("Haida Gwaii survey locations") +
-  theme_bw())
+# map <- ggplotly(ggplot() +
+#   geom_sf(data = subset(ecosec, ECOSECTION_NAME %in% c("Skidegate Plateau","Hecate Strait","Queen Charlotte Lowland","Queen Charlotte Ranges")), aes(colour = ECOSECTION_NAME, fill=NA)) +
+#   geom_sf(data = ghpc, colour = "#A19E99", size = 0.2, aes(fill = HABITAT), alpha = 0.5) +
+#   geom_sf(data = h, colour = "red", fill=NA) +
+#   coord_sf(crs = 3005, xlim= c(522000,670000), ylim = c(775000,1057000), expand = F) +
+#   scale_fill_viridis_d(guide = guide_legend()) +
+#   scale_colour_viridis_d(guide = guide_legend()) + 
+#   ggtitle("Haida Gwaii survey locations") +
+#   theme_bw())
+# 
+# htmlwidgets::saveWidget(map, file = "/users/alexandremacphail/gwaii-haanas/map.html")
+# webshot::webshot(url = "/users/alexandremacphail/gwaii-haanas/map.html", file = "/users/alexandremacphail/gwaii-haanas/map.png", delay = 1, zoom = 4)
 
 ```
+
+
+![](map.png)
+
 
 ### Forest and plant communities
 
@@ -81,7 +91,7 @@ The vegetation and forest type is dominated by Coastal Western Hemlock, Mountain
 ```{r, haida-gwaii-species, echo = T, eval = TRUE, message = F, error = F, warning= F}
 
 #List of species on Haida Gwaii 
-hgspp <- read_csv("/users/alexandremacphail/GH/GH/hgspp/avibasehg2.csv") %>% as_tibble()
+hgspp <- read_csv("/users/alexandremacphail/gwaii-haanas/hgspp/avibasehg2.csv") %>% as_tibble()
 # Yes means confirmed breeder, migrant or resident
 # Rare / Accidental
 # Yes_d was changed from Rare / Accdidental -> Yes for TOWA, CHSP, WETA
@@ -118,4 +128,20 @@ Data required some standardization prior to proceeding with transcription and an
 Each <span class="jargon">location</span>, a geographic and physical place on the landscape, was given a unique name. All raw acoustic recordings collected at each of these locations was then attributed these names. This created a unique spatial and temporal key to all of the acoustic data in the format of (**LOCATION_YYYYMMDD_HHMMSS**). The prefix **GHNPR** to denote points within the bounds of Gwaii Haanas National Park Reserve and **HGBC** to denote points outside the park, principally those associated with the Northern Saw-whet Owl project on Graham Island.
 
 ### Acoustic transcription
+
+Community data were managed, stored, processed and quality controlled using [WildTrax](https://www.wildtrax.ca). 
+
+Data were associated to each of 10 projects as follows:
+
+- Night Birds Returning (2010)
+- Night Birds Returning (2011)
+- Night Birds Returning (2012)
+- Night Birds Returning (2013)
+- Night Birds Returning (2014)
+- Night Birds Returning and Restoring Balance (2015)
+- Graham Island Northern Saw-whet Owl Territory Pilot Study (2012 - 2013)
+- Marbled Murrelet Pilot Study (2016)
+- EI Grid Pilot Study (2016)
+- EI Grid Alpine Pilot (2017)
+
 

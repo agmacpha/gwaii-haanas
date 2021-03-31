@@ -70,6 +70,8 @@ Species are stylized like <span class="species">Ovenbird (OVEN)</span>, <span cl
 Things specific to Gwaii Haanas are in <span class="gh">purple</span>.
 
 ```{r include=FALSE}
+
+library(tinytex)
 # automatically create a bib database for R packages
 knitr::write_bib(c(
   .packages(), 'bookdown', 'knitr', 'rmarkdown'

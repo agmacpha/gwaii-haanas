@@ -11,6 +11,8 @@ location-standardization
 acoustic-transcription
 songbird-community
 methods
+effect-of-proximity-to-ocean-on-detection-probability
+single-species-models
 community-structure
 results
 community-stability
